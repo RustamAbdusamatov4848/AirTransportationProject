@@ -1,29 +1,33 @@
 package com.gridnine.testing;
 
 import java.time.Duration;
-import java.time.LocalDateTime;
 import java.util.List;
 
-public class ExcessiveGroundTimeFilter implements FlightFilter{
-    private static final Duration MAX_GROUND_TIME = Duration.ofHours(2);
+public class ExcessiveGroundTimeFilter implements FlightFilter {
+    private static final long MAX_GROUND_TIME_MINUTES = 120;
 
     @Override
     public List<Flight> filter(List<Flight> flights) {
         return flights.stream()
-                .filter(flight -> calculateTotalGroundTime(flight).compareTo(MAX_GROUND_TIME) <= 0)
+                .filter(this::hasExcessiveGroundTime)
                 .toList();
     }
 
-    private Duration calculateTotalGroundTime(Flight flight) {
+    private boolean hasExcessiveGroundTime(Flight flight) {
         List<Segment> segments = flight.getSegments();
         Duration totalGroundTime = Duration.ZERO;
 
         for (int i = 0; i < segments.size() - 1; i++) {
-            LocalDateTime arrivalTime = segments.get(i).getArrivalDate();
-            LocalDateTime nextDepartureTime = segments.get(i + 1).getDepartureDate();
-            totalGroundTime = totalGroundTime.plus(Duration.between(arrivalTime, nextDepartureTime));
+            Segment currentSegment = segments.get(i);
+            Segment nextSegment = segments.get(i + 1);
+            Duration groundTime = Duration.between(currentSegment.getArrivalDate(), nextSegment.getDepartureDate());
+            totalGroundTime = totalGroundTime.plus(groundTime);
+
+            if (totalGroundTime.toMinutes() > MAX_GROUND_TIME_MINUTES) {
+                return false;
+            }
         }
 
-        return totalGroundTime;
+        return true;
     }
 }
